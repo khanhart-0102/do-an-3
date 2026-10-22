@@ -29,6 +29,20 @@
       "when": 1750695044679,
       "tag": "0003_lyrical_reavers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792590000000,
+      "tag": "0004_pdf_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792674000000,
+      "tag": "0005_bank_transfer_payments",
+      "breakpoints": true
     }
   ]
 }

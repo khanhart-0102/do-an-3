@@ -9,6 +9,11 @@ import { testAttempts, testAnswers, testQuestions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { validateAnswer } from "@/lib/utils/answer-validator";
 import type { QuestionType } from "@/lib/utils/question-type-mapper";
+import {
+  gradeImageAnswers,
+  isImageAnswerMetadata,
+  parseImageAnswerPayload,
+} from "@/lib/utils/image-answer";
 
 /**
  * POST /api/admission-tests/attempts/[attemptId]/answer
@@ -63,7 +68,24 @@ export async function POST(
 
     // Prepare answer data
     let finalAnswerData = answerData;
-    if (!answerData && (selectedOptionId || textAnswer)) {
+    const imageAnswerMetadata = isImageAnswerMetadata(question.metadata)
+      ? question.metadata
+      : undefined;
+    const usesImageAnswerBoxes =
+      questionType === "TEXT_INPUT" && imageAnswerMetadata !== undefined;
+
+    if (usesImageAnswerBoxes && (answerData !== undefined || textAnswer !== undefined)) {
+      const imageAnswers = parseImageAnswerPayload(answerData ?? textAnswer);
+      if (!imageAnswers) {
+        return NextResponse.json(
+          { error: "Invalid image answer format" },
+          { status: 400 }
+        );
+      }
+      finalAnswerData = { boxes: imageAnswers };
+    }
+
+    if (!usesImageAnswerBoxes && !answerData && (selectedOptionId || textAnswer)) {
       if (selectedOptionId) {
         finalAnswerData = { selectedOptionId };
       } else if (textAnswer) {
@@ -76,32 +98,59 @@ export async function POST(
     let pointsEarned = 0;
 
     if (questionType && finalAnswerData) {
-      let correctAnswer: any = null;
-      let shouldValidate = true;
+      if (usesImageAnswerBoxes) {
+        if (!imageAnswerMetadata) {
+          return NextResponse.json(
+            { error: "Image answer configuration is invalid" },
+            { status: 500 }
+          );
+        }
 
-      // Get correct answer based on question type
-      if (questionType === "SINGLE_CHOICE" || questionType === "MULTIPLE_CHOICE") {
-        const correctOptions = question.options.filter((opt) => opt.isCorrect);
-        correctAnswer = questionType === "SINGLE_CHOICE"
-          ? correctOptions[0]?.id
-          : correctOptions.map((opt) => opt.id);
-      } else if (questionType === "TEXT_INPUT") {
-        const correctOption = question.options.find((opt) => opt.isCorrect);
-        correctAnswer = correctOption?.optionText || null;
-      }
+        const imageAnswers = parseImageAnswerPayload(finalAnswerData);
+        if (!imageAnswers) {
+          return NextResponse.json(
+            { error: "Invalid image answer format" },
+            { status: 400 }
+          );
+        }
 
-      // Validate if we have the necessary data
-      if (shouldValidate) {
-        const validation = validateAnswer(
-          questionType,
-          finalAnswerData,
-          correctAnswer,
-          question.metadata,
+        const validation = gradeImageAnswers(
+          imageAnswers,
+          imageAnswerMetadata,
           question.points || 1
         );
-
         isCorrect = validation.isCorrect;
         pointsEarned = validation.pointsEarned;
+      } else {
+        let correctAnswer: number | number[] | string | null = null;
+        const shouldValidate = true;
+
+        if (
+          questionType === "SINGLE_CHOICE" ||
+          questionType === "MULTIPLE_CHOICE"
+        ) {
+          const correctOptions = question.options.filter((opt) => opt.isCorrect);
+          correctAnswer =
+            questionType === "SINGLE_CHOICE"
+              ? correctOptions[0]?.id
+              : correctOptions.map((opt) => opt.id);
+        } else if (questionType === "TEXT_INPUT") {
+          const correctOption = question.options.find((opt) => opt.isCorrect);
+          correctAnswer = correctOption?.optionText || null;
+        }
+
+        if (shouldValidate) {
+          const validation = validateAnswer(
+            questionType,
+            finalAnswerData,
+            correctAnswer,
+            question.metadata,
+            question.points || 1
+          );
+
+          isCorrect = validation.isCorrect;
+          pointsEarned = validation.pointsEarned;
+        }
       }
     }
 
@@ -153,4 +202,3 @@ export async function POST(
     );
   }
 }
-

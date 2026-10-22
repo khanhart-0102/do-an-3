@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface PriceInputProps {
   value: number;
@@ -22,26 +22,19 @@ export function PriceInput({
   const [displayValue, setDisplayValue] = useState("");
 
   // Format number with thousand separators
-  const formatNumber = (num: number): string => {
+  const formatNumber = useCallback((num: number): string => {
     if (isNaN(num)) return "";
     if (num === 0) return "0";
     return num.toLocaleString("en-US", {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
+      maximumFractionDigits: currency === "VND" ? 0 : 2,
     });
-  };
-
-  // Parse formatted string to number
-  const parseNumber = (str: string): number => {
-    const cleaned = str.replace(/[^0-9.]/g, "");
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
-  };
+  }, [currency]);
 
   // Update display value when prop value changes
   useEffect(() => {
     setDisplayValue(formatNumber(value));
-  }, [value]);
+  }, [value, formatNumber]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
@@ -54,7 +47,10 @@ export function PriceInput({
     }
 
     // Remove all non-numeric characters except decimal point
-    const cleaned = input.replace(/[^0-9.]/g, "");
+    const cleaned =
+      currency === "VND"
+        ? input.replace(/\D/g, "")
+        : input.replace(/[^0-9.]/g, "");
 
     // Prevent multiple decimal points
     const parts = cleaned.split(".");
@@ -106,4 +102,3 @@ export function PriceInput({
     </div>
   );
 }
-

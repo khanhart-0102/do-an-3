@@ -51,7 +51,7 @@ export const generateChatbotResponse = async (
     const aiResponse = await generateAIResponse(systemPrompt, userPrompt);
 
     // Step 4: Validate output
-    const language = "language" in request ? request.language : "en";
+    const language = "language" in request ? request.language ?? "en" : "en";
     const validationResult = validateChatbotOutput(
       aiResponse,
       request.mode,
@@ -81,6 +81,8 @@ export const generateChatbotResponse = async (
               ? request.sentence
               : "userText" in request
                 ? request.userText
+                : "userInput" in request
+                  ? request.userInput
                 : "",
       response: finalResponse,
       confidence: calculateConfidence(validationResult),

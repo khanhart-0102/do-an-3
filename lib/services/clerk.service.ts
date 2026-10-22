@@ -8,6 +8,13 @@
 
 import { createClerkClient } from "@clerk/backend";
 import { clerkClient as nextClerkClient } from "@clerk/nextjs/server";
+import { eq, ilike } from "drizzle-orm";
+import db from "@/db/drizzle";
+import { users } from "@/db/schema";
+import {
+    getPlatformRole,
+    isPlatformAdminEmail,
+} from "@/lib/platform-admin";
 
 /**
  * Get Clerk client instance
@@ -96,7 +103,12 @@ export const updateClerkUser = async (
 ) => {
     const client = await getClerkClient();
     
-    const updateData: any = {};
+    const updateData: {
+        firstName?: string;
+        lastName?: string;
+        username?: string;
+        publicMetadata?: { role: string };
+    } = {};
     
     if (userData.firstName !== undefined) updateData.firstName = userData.firstName;
     if (userData.lastName !== undefined) updateData.lastName = userData.lastName;
@@ -141,7 +153,52 @@ export const sendPasswordResetEmail = async (userId: string) => {
 export const getUserRole = async (userId: string): Promise<string> => {
     const client = await getClerkClient();
     const user = await client.users.getUser(userId);
-    return (user.publicMetadata?.role as string) || 'STUDENT';
+    const email =
+        user.emailAddresses.find(
+            (address) => address.id === user.primaryEmailAddressId
+        )?.emailAddress ?? user.primaryEmailAddress?.emailAddress;
+
+    if (isPlatformAdminEmail(email) && email) {
+        const emailOwner = await db.query.users.findFirst({
+            where: ilike(users.email, email),
+            columns: { userId: true },
+        });
+        if (emailOwner && emailOwner.userId !== userId) {
+            console.error(
+                "Platform admin email is already linked to another user account."
+            );
+            return "STUDENT";
+        }
+
+        const existingUser = await db.query.users.findFirst({
+            where: eq(users.userId, userId),
+            columns: { userId: true },
+        });
+
+        if (existingUser) {
+            await db
+                .update(users)
+                .set({ email, role: "ADMIN", updatedAt: new Date() })
+                .where(eq(users.userId, userId));
+        } else {
+            await db.insert(users).values({
+                userId,
+                email,
+                userName: user.username || user.firstName || email.split("@")[0],
+                userImageSrc: user.imageUrl || "/mascot.svg",
+                status: "active",
+                role: "ADMIN",
+                language: "en",
+                firstName: user.firstName,
+                lastName: user.lastName,
+                lastLoginAt: new Date(),
+            });
+        }
+
+        return "ADMIN";
+    }
+
+    return getPlatformRole(email, user.publicMetadata?.role);
 };
 
 /**
@@ -153,4 +210,3 @@ export const isUserAdmin = async (userId: string): Promise<boolean> => {
     const role = await getUserRole(userId);
     return role === 'ADMIN';
 };
-

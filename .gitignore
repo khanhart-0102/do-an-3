@@ -44,10 +44,17 @@ next-env.d.ts
 # clerk configuration (can include secrets)
 /.clerk/
 
-# uploaded files
+# uploaded files and private student data
+/private-data/*
+!/private-data/pdf-assignment-submissions/
+/private-data/pdf-assignment-submissions/*
+!/private-data/pdf-assignment-submissions/.gitkeep
 /public/uploads/images/*
 /public/uploads/videos/*
 /public/uploads/audio/*
+/public/uploads/speaking/*
 !/public/uploads/images/.gitkeep
 !/public/uploads/videos/.gitkeep
 !/public/uploads/audio/.gitkeep
+!/public/uploads/speaking/.gitkeep
+!/private-data/pdf-assignment-submissions/.gitkeep

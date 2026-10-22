@@ -17,7 +17,7 @@ export function CreateCourseForm() {
     examType: "IELTS",
     level: "BEGINNER",
     price: 0,
-    currency: "USD",
+    currency: "VND",
     isFree: true,
     bandFrom: 5.0,
     bandTo: 6.0,
@@ -171,9 +171,7 @@ export function CreateCourseForm() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required={!formData.isFree}
               >
-                <option value="USD">USD ($)</option>
                 <option value="VND">VND (₫)</option>
-                <option value="EUR">EUR (€)</option>
               </select>
             </div>
           </>
@@ -275,4 +273,3 @@ export function CreateCourseForm() {
     </form>
   );
 }
-

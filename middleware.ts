@@ -79,7 +79,9 @@ export default clerkMiddleware(async (auth, req) => {
       // }
     } catch (error) {
       console.error("❌ Error in user middleware operations:", error);
-      // Continue with normal flow if there's an error to avoid breaking the app
+      return new NextResponse("Authorization service temporarily unavailable", {
+        status: 503,
+      });
     }
   }
 });

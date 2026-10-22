@@ -21,7 +21,7 @@ interface CourseDetailPageProps {
 
 // Format price with currency
 function formatPrice(price: number, currency: string): string {
-  const amount = price / 100; // Convert from cents
+  const amount = currency === "VND" ? price : price / 100;
   const currencySymbols: { [key: string]: string } = {
     USD: "$",
     VND: "₫",
@@ -29,10 +29,9 @@ function formatPrice(price: number, currency: string): string {
   };
   const symbol = currencySymbols[currency] || currency;
 
-  if (currency === "VND") {
-    return `${amount.toLocaleString("vi-VN")} ${symbol}`;
-  }
-  return `${symbol}${amount.toFixed(2)}`;
+  return currency === "VND"
+    ? `${amount.toLocaleString("vi-VN")} ${symbol}`
+    : `${symbol}${amount.toFixed(2)}`;
 }
 
 export default async function CourseDetailPage({ params }: CourseDetailPageProps) {
@@ -154,6 +153,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
                     courseId={course.id}
                     isFree={course.isFree}
                     price={course.price}
+                    currency={course.currency}
                     isEnrolled={isEnrolled}
                   />
                 ) : (
@@ -231,4 +231,3 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
     </div>
   );
 }
-

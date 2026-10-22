@@ -8,7 +8,7 @@ import { TestSectionNavigation } from "./test-section-navigation";
 import { TestQuestionNavigation } from "./test-question-navigation";
 import { TestQuestionDisplay } from "./test-question-display";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, X } from "lucide-react";
+import { AlertCircle, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +20,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import toast from "react-hot-toast";
+import type { QuestionType } from "@/lib/utils/question-type-mapper";
+import type { QuestionMetadata } from "@/shared/types/questionMetadata";
 
 interface Test {
   id: number;
@@ -43,6 +45,8 @@ interface Question {
   id: number;
   sectionId: number;
   questionText: string;
+  questionType?: QuestionType | null;
+  metadata?: QuestionMetadata | null;
   imageSrc?: string | null;
   audioSrc?: string | null;
   order: number;
@@ -574,4 +578,3 @@ export function TestTakingClient({ testId }: TestTakingClientProps) {
     </div>
   );
 }
-

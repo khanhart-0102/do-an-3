@@ -7,8 +7,12 @@ import { ImageUpload } from "@/components/ui/image-upload";
 import { RichTextEditor } from "../exercises/rich-text-editor";
 import { QuestionTypeSelector } from "./question-type-selector";
 import { QuestionEditor } from "./question-editor";
+import { ImageAnswerBoxesEditor } from "./image-answer-boxes-editor";
 import { QuestionType, getDefaultMetadata } from "@/lib/utils/question-type-mapper";
-import type { QuestionMetadata } from "@/shared/types/questionMetadata";
+import type {
+  ImageAnswerMetadata,
+  QuestionMetadata,
+} from "@/shared/types/questionMetadata";
 
 interface TestQuestion {
   id: number;
@@ -68,7 +72,9 @@ export function QuestionFormModal({
     question.metadata || null
   );
 
-  const [correctAnswer, setCorrectAnswer] = useState<string>("");
+  const [correctAnswer, setCorrectAnswer] = useState<string>(
+    question.correctAnswer || ""
+  );
 
   const [options, setOptions] = useState<TestQuestionOption[]>(
     question.options?.map((opt, idx) => ({
@@ -82,7 +88,10 @@ export function QuestionFormModal({
 
   const [saving, setSaving] = useState(false);
 
-
+  const imageAnswerMetadata = metadata as ImageAnswerMetadata | null;
+  const usesImageAnswerBoxes =
+    questionType === "TEXT_INPUT" &&
+    imageAnswerMetadata?.imageAnswerMode === true;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,9 +129,26 @@ export function QuestionFormModal({
 
     const needsTextAnswer = questionType === "TEXT_INPUT";
 
-    if (needsTextAnswer && !correctAnswer.trim()) {
+    if (needsTextAnswer && !usesImageAnswerBoxes && !correctAnswer.trim()) {
       alert("Please provide a correct answer");
       return;
+    }
+
+    if (usesImageAnswerBoxes) {
+      if (!formData.imageSrc.trim()) {
+        alert("Vui lòng tải ảnh đề lên trước khi đặt ô trả lời.");
+        return;
+      }
+
+      if (
+        !imageAnswerMetadata.imageAnswerBoxes.length ||
+        imageAnswerMetadata.imageAnswerBoxes.some(
+          (box) => !box.correctAnswer?.trim()
+        )
+      ) {
+        alert("Vui lòng thêm ô và nhập đáp án đúng cho tất cả các ô.");
+        return;
+      }
     }
 
     const needsMetadata =
@@ -151,7 +177,10 @@ export function QuestionFormModal({
           ...formData,
           questionType,
           metadata,
-          correctAnswer: needsTextAnswer ? correctAnswer : undefined,
+          correctAnswer:
+            needsTextAnswer && !usesImageAnswerBoxes
+              ? correctAnswer
+              : undefined,
           options: needsOptions ? options.map((opt, idx) => ({
             optionText: opt.optionText,
             isCorrect: opt.isCorrect,
@@ -282,6 +311,44 @@ export function QuestionFormModal({
                 />
               </div>
 
+              {questionType === "TEXT_INPUT" && (
+                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <label className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={usesImageAnswerBoxes}
+                      disabled={!formData.imageSrc}
+                      onChange={(event) => {
+                        const current =
+                          metadata as Partial<ImageAnswerMetadata> | null;
+                        const nextMetadata: ImageAnswerMetadata = {
+                          ...current,
+                          imageAnswerMode: event.target.checked,
+                          imageAnswerBoxes:
+                            current?.imageAnswerBoxes ?? [],
+                        };
+                        setMetadata(nextMetadata);
+                      }}
+                      className="mt-1 h-4 w-4"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-blue-900">
+                        Cho học viên điền trực tiếp lên ảnh
+                      </span>
+                      <span className="mt-1 block text-sm text-blue-800">
+                        Tải ảnh lên, bật tùy chọn này, rồi bấm vào từng vị trí
+                        trống để tạo ô trả lời.
+                      </span>
+                    </span>
+                  </label>
+                  {!formData.imageSrc && (
+                    <p className="text-sm text-amber-700">
+                      Cần tải ảnh đề lên trước khi bật tính năng này.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Points */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -304,22 +371,30 @@ export function QuestionFormModal({
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Answer Configuration *
                 </label>
-                <QuestionEditor
-                  questionType={questionType}
-                  options={options}
-                  onOptionsChange={(newOptions) => {
-                    setOptions(newOptions.map((opt, idx) => ({
-                      ...opt,
-                      questionId: question.id,
-                      order: opt.order || idx + 1,
-                    })));
-                  }}
-                  metadata={metadata}
-                  onMetadataChange={setMetadata}
-                  correctAnswer={correctAnswer}
-                  onCorrectAnswerChange={setCorrectAnswer}
-                  testId={testId}
-                />
+                {usesImageAnswerBoxes && formData.imageSrc ? (
+                  <ImageAnswerBoxesEditor
+                    imageSrc={formData.imageSrc}
+                    metadata={imageAnswerMetadata!}
+                    onChange={setMetadata}
+                  />
+                ) : (
+                  <QuestionEditor
+                    questionType={questionType}
+                    options={options}
+                    onOptionsChange={(newOptions) => {
+                      setOptions(newOptions.map((opt, idx) => ({
+                        ...opt,
+                        questionId: question.id,
+                        order: opt.order || idx + 1,
+                      })));
+                    }}
+                    metadata={metadata}
+                    onMetadataChange={setMetadata}
+                    correctAnswer={correctAnswer}
+                    onCorrectAnswerChange={setCorrectAnswer}
+                    testId={testId}
+                  />
+                )}
               </div>
 
               {/* Explanation */}
@@ -364,4 +439,3 @@ export function QuestionFormModal({
     </div>
   );
 }
-

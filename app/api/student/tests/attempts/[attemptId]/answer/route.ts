@@ -6,10 +6,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import db from "@/db/drizzle";
-import { testAttempts, testAnswers, testQuestions, testQuestionOptions, testSubmissions } from "@/db/schema";
+import { testAttempts, testAnswers, testQuestions, testSubmissions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { validateAnswer } from "@/lib/utils/answer-validator";
 import type { QuestionType } from "@/lib/utils/question-type-mapper";
+import {
+  gradeImageAnswers,
+  isImageAnswerMetadata,
+  parseImageAnswerPayload,
+} from "@/lib/utils/image-answer";
 
 /**
  * POST /api/student/tests/attempts/[attemptId]/answer
@@ -119,8 +124,25 @@ export async function POST(
     let pointsEarned = 0;
     let finalAnswerData = answerData;
 
+    const imageAnswerMetadata = isImageAnswerMetadata(question.metadata)
+      ? question.metadata
+      : undefined;
+    const usesImageAnswerBoxes =
+      questionType === "TEXT_INPUT" && imageAnswerMetadata !== undefined;
+
+    if (usesImageAnswerBoxes && (answerData !== undefined || textAnswer !== undefined)) {
+      const imageAnswers = parseImageAnswerPayload(answerData ?? textAnswer);
+      if (!imageAnswers) {
+        return NextResponse.json(
+          { error: "Invalid image answer format" },
+          { status: 400 }
+        );
+      }
+      finalAnswerData = { boxes: imageAnswers };
+    }
+
     // ⚠️ BACKWARD COMPATIBILITY: Convert old format to new format
-    if (!answerData && (selectedOptionId || textAnswer)) {
+    if (!usesImageAnswerBoxes && !answerData && (selectedOptionId || textAnswer)) {
       if (selectedOptionId) {
         finalAnswerData = { selectedOptionId };
       } else if (textAnswer) {
@@ -130,37 +152,65 @@ export async function POST(
 
     // ✅ NEW: Validate answer using new validation logic
     if (questionType && finalAnswerData) {
-      let correctAnswer: any = null;
-      let shouldValidate = true;
+      if (usesImageAnswerBoxes) {
+        if (!imageAnswerMetadata) {
+          return NextResponse.json(
+            { error: "Image answer configuration is invalid" },
+            { status: 500 }
+          );
+        }
 
-      // Get correct answer based on question type
-      if (questionType === "SINGLE_CHOICE") {
-        const correctOption = question.options.find(opt => opt.isCorrect);
-        correctAnswer = correctOption?.id;
-      } else if (questionType === "MULTIPLE_CHOICE") {
-        correctAnswer = question.options.filter(opt => opt.isCorrect).map(opt => opt.id);
-      } else if (questionType === "TEXT_INPUT") {
-        // ✅ FIX: Get correctAnswer from question field
-        correctAnswer = (question as any).correctAnswer || null;
-        shouldValidate = correctAnswer !== null;
-      } else if (questionType === "MATCHING" || questionType === "LABELING" || questionType === "ORDERING") {
-        // These types use metadata for validation
-        correctAnswer = null;
-        shouldValidate = question.metadata !== null;
-      }
+        const imageAnswers = parseImageAnswerPayload(finalAnswerData);
+        if (!imageAnswers) {
+          return NextResponse.json(
+            { error: "Invalid image answer format" },
+            { status: 400 }
+          );
+        }
 
-      // Validate if we have the necessary data
-      if (shouldValidate) {
-        const validation = validateAnswer(
-          questionType,
-          finalAnswerData,
-          correctAnswer,
-          question.metadata,
+        const validation = gradeImageAnswers(
+          imageAnswers,
+          imageAnswerMetadata,
           question.points || 1
         );
-
         isCorrect = validation.isCorrect;
         pointsEarned = validation.pointsEarned;
+      } else {
+        let correctAnswer: number | number[] | string | null = null;
+        let shouldValidate = true;
+
+        // Get correct answer based on question type
+        if (questionType === "SINGLE_CHOICE") {
+          const correctOption = question.options.find((opt) => opt.isCorrect);
+          correctAnswer = correctOption?.id ?? null;
+        } else if (questionType === "MULTIPLE_CHOICE") {
+          correctAnswer = question.options
+            .filter((opt) => opt.isCorrect)
+            .map((opt) => opt.id);
+        } else if (questionType === "TEXT_INPUT") {
+          correctAnswer = question.correctAnswer || null;
+          shouldValidate = correctAnswer !== null;
+        } else if (
+          questionType === "MATCHING" ||
+          questionType === "LABELING" ||
+          questionType === "ORDERING"
+        ) {
+          correctAnswer = null;
+          shouldValidate = question.metadata !== null;
+        }
+
+        if (shouldValidate) {
+          const validation = validateAnswer(
+            questionType,
+            finalAnswerData,
+            correctAnswer,
+            question.metadata,
+            question.points || 1
+          );
+
+          isCorrect = validation.isCorrect;
+          pointsEarned = validation.pointsEarned;
+        }
       }
     } else {
       // ⚠️ FALLBACK: Old validation logic for backward compatibility
@@ -224,4 +274,3 @@ export async function POST(
     );
   }
 }
-

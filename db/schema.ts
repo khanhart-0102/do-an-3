@@ -12,7 +12,7 @@
 // ============================================================================
 
 import { relations } from "drizzle-orm";
-import { boolean, integer, jsonb, pgEnum, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgEnum, pgTable, real, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 // ============================================================================
 // ENUMS - Define all enumerated types for type safety
@@ -571,6 +571,46 @@ export const testSubmissions = pgTable("test_submissions", {
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const pdfAssignments = pgTable(
+    "pdf_assignments",
+    {
+        id: serial("id").primaryKey(),
+        title: text("title").notNull(),
+        description: text("description").notNull(),
+        exerciseFileName: text("exercise_file_name").notNull(),
+        exerciseFileUrl: text("exercise_file_url").notNull(),
+        answerKey: text("answer_key"),
+        createdAt: timestamp("created_at").defaultNow().notNull(),
+        updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    },
+    (table) => ({
+        exerciseFileUrlUnique: uniqueIndex("pdf_assignments_exercise_file_url_unique").on(
+            table.exerciseFileUrl
+        ),
+    })
+);
+
+export const pdfAssignmentSubmissions = pgTable("pdf_assignment_submissions", {
+    id: serial("id").primaryKey(),
+    assignmentId: integer("assignment_id")
+        .references(() => pdfAssignments.id, { onDelete: "cascade" })
+        .notNull(),
+    userId: text("user_id")
+        .references(() => users.userId, { onDelete: "cascade" })
+        .notNull(),
+    answerText: text("answer_text"),
+    storageName: text("storage_name"),
+    originalFileName: text("original_file_name"),
+    score: integer("score"),
+    feedback: text("feedback"),
+    status: submissionStatusEnum("status").notNull().default("PENDING"),
+    gradedBy: text("graded_by").references(() => users.userId, {
+        onDelete: "set null",
+    }),
+    submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+    gradedAt: timestamp("graded_at"),
+});
+
 // ============================================================================
 // VOCABULARY TABLES - Flashcard system (UC23, UC29)
 // ============================================================================
@@ -642,8 +682,12 @@ export const coursePayments = pgTable("course_payments", {
     id: serial("id").primaryKey(),
     userId: text("user_id").references(() => users.userId, { onDelete: "cascade" }).notNull(),
     courseId: integer("course_id").references(() => courses.id, { onDelete: "cascade" }).notNull(),
-    amount: integer("amount").notNull(), // Amount in cents
+    amount: integer("amount").notNull(),
     currency: text("currency").notNull().default("USD"),
+    paymentMethod: text("payment_method").notNull().default("STRIPE"),
+    paymentReference: text("payment_reference").unique(),
+    reviewedBy: text("reviewed_by").references(() => users.userId, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at"),
     stripePaymentIntentId: text("stripe_payment_intent_id").unique(),
     stripeCustomerId: text("stripe_customer_id"),
     status: paymentStatusEnum("status").notNull().default("PENDING"),
@@ -1429,4 +1473,3 @@ export const courseRecommendationsRelations = relations(courseRecommendations, (
         references: [courses.id],
     }),
 }));
-

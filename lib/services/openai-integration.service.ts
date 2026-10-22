@@ -241,7 +241,7 @@ export const uploadTrainingFile = async (
  */
 export const deleteFile = async (fileId: string): Promise<void> => {
   try {
-    await openai.files.del(fileId);
+    await openai.files.delete(fileId);
   } catch (error) {
     console.error("Error deleting file:", error);
     throw error;

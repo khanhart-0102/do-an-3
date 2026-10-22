@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,11 @@ const menuItems = [
     title: "Tests",
     href: "/student/tests",
     icon: ClipboardList,
+  },
+  {
+    title: "Bài tập PDF",
+    href: "/student/pdf-assignments",
+    icon: FileText,
   },
   {
     title: "Flashcards",
@@ -147,4 +153,3 @@ export function StudentSidebar() {
     </aside>
   );
 }
-

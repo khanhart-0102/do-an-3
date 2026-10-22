@@ -17,6 +17,7 @@ import {
   VocabularyRequest,
   GrammarRequest,
   ErrorAnalysisRequest,
+  PersonalizedRequest,
 } from "@/lib/types/chatbot.types";
 
 // ============================================================================
@@ -267,13 +268,13 @@ export const routeRequest = (
       };
 
     case "personalized":
+      const personalizedRequest = request as PersonalizedRequest;
       return {
-        systemPrompt: getPersonalizedSystemPrompt("intermediate"),
-        userPrompt: request.mode, // Will be handled separately
+        systemPrompt: getPersonalizedSystemPrompt(
+          personalizedRequest.userLevel ?? "intermediate"
+        ),
+        userPrompt: personalizedRequest.userInput,
       };
-
-    default:
-      throw new Error(`Unknown chatbot mode: ${request.mode}`);
   }
 };
 

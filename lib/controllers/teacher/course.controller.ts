@@ -169,6 +169,12 @@ export const getTeacherCourseById = async (courseId: number, teacherId: string) 
  * Create new course
  */
 export const createTeacherCourse = async (teacherId: string, data: any) => {
+  const currency = String(data.currency || "VND").toUpperCase();
+  const price = Number(data.price || 0);
+  if (!data.isFree && (currency !== "VND" || !Number.isSafeInteger(price) || price <= 0)) {
+    throw new Error("Khóa học có phí phải có giá VND là số nguyên lớn hơn 0");
+  }
+
   // Create course
   const [course] = await db
     .insert(courses)
@@ -178,8 +184,8 @@ export const createTeacherCourse = async (teacherId: string, data: any) => {
       description: data.description,
       examType: data.examType || "IELTS",
       level: data.level || "INTERMEDIATE",
-      price: data.price || 0,
-      currency: data.currency || "USD",
+      price,
+      currency,
       isFree: data.isFree || false,
       bandFrom: data.bandFrom || null,
       bandTo: data.bandTo || null,
@@ -217,11 +223,28 @@ export const updateTeacherCourse = async (
     throw new Error("Course not found or you don't have access");
   }
 
+  const existingCourse = await db.query.courses.findFirst({
+    where: eq(courses.id, courseId),
+  });
+  if (!existingCourse) {
+    throw new Error("Course not found");
+  }
+
+  const currency = String(data.currency ?? existingCourse.currency).toUpperCase();
+  const price = Number(data.price ?? existingCourse.price);
+  const isFree = data.isFree ?? existingCourse.isFree;
+  if (!isFree && (currency !== "VND" || !Number.isSafeInteger(price) || price <= 0)) {
+    throw new Error("Khóa học có phí phải có giá VND là số nguyên lớn hơn 0");
+  }
+
   // Update course
   const [updated] = await db
     .update(courses)
     .set({
       ...data,
+      price,
+      currency,
+      isFree,
       updatedAt: new Date(),
     })
     .where(eq(courses.id, courseId))
@@ -261,4 +284,3 @@ export const deleteTeacherCourse = async (courseId: number, teacherId: string) =
 
   return { success: true };
 };
-

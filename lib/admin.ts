@@ -1,16 +1,18 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import db from "@/db/drizzle";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import {
+    isPlatformAdminEmail,
+    PLATFORM_ADMIN_EMAIL,
+} from "@/lib/platform-admin";
 
 const adminIds = [
     "user_2tkC1z5zJJ4Sw2b85JXWEqmNeuY",
 ]
 
 // Admin emails for additional verification
-const adminEmails = [
-    "22521285@gm.uit.edu.vn", // Current user for testing
-]
+const adminEmails = ["22521285@gm.uit.edu.vn", PLATFORM_ADMIN_EMAIL];
 
 export const getIsAdmin = async () => {
     try {
@@ -28,29 +30,28 @@ export const getIsAdmin = async () => {
             return true;
         }
 
-        // For testing purposes, also check by email
+        if (await getUserRole(userId) === "ADMIN") {
+            console.log(`✅ Admin access granted to ${userId} (by database role)`);
+            return true;
+        }
+
         try {
-            const { currentUser } = await import("@clerk/nextjs/server");
             const user = await currentUser();
+            const userEmail =
+                user?.emailAddresses.find(
+                    (address) => address.id === user.primaryEmailAddressId
+                )?.emailAddress ?? user?.primaryEmailAddress?.emailAddress;
 
-            if (user && user.emailAddresses) {
-                const userEmail = user.emailAddresses[0]?.emailAddress;
-                console.log(`🔍 Checking email: ${userEmail}`);
-
-                if (userEmail && adminEmails.includes(userEmail)) {
-                    console.log(`✅ Admin access granted to ${userEmail} (by email)`);
-                    return true;
-                }
+            if (
+                userEmail &&
+                (isPlatformAdminEmail(userEmail) ||
+                    adminEmails.includes(userEmail.toLowerCase()))
+            ) {
+                console.log(`✅ Admin access granted to ${userEmail} (by email)`);
+                return true;
             }
         } catch (error) {
             console.error("Error checking admin by email:", error);
-        }
-
-        // TEMPORARY: For testing purposes, allow any authenticated user to be admin
-        // This should be removed in production
-        if (process.env.NODE_ENV === 'development') {
-            console.log(`⚠️  DEVELOPMENT MODE: Granting admin access to ${userId}`);
-            return true;
         }
 
         console.log(`❌ Admin access denied for ${userId}`);

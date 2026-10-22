@@ -10,6 +10,7 @@ interface CourseEnrollButtonProps {
   courseId: number;
   isFree: boolean;
   price: number;
+  currency?: string;
   isEnrolled?: boolean;
 }
 
@@ -17,10 +18,12 @@ export function CourseEnrollButton({
   courseId,
   isFree,
   price,
+  currency = "VND",
   isEnrolled = false,
 }: CourseEnrollButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const displayPrice = currency === "VND" ? price : price / 100;
 
   const handleEnroll = async () => {
     try {
@@ -44,9 +47,10 @@ export function CourseEnrollButton({
         toast.success("Đăng ký thành công!");
         router.push("/student");
         router.refresh();
-      } else if (data.url) {
-        // Paid course - redirect to Stripe checkout
-        window.location.href = data.url;
+      } else if (data.paymentId) {
+        router.push(`/courses/payment/${data.paymentId}`);
+      } else {
+        throw new Error("Không nhận được thông tin thanh toán hợp lệ");
       }
     } catch (error) {
       console.error("Enrollment error:", error);
@@ -84,10 +88,15 @@ export function CourseEnrollButton({
         </>
       ) : (
         <>
-          {isFree ? "Đăng ký miễn phí" : `Đăng ký - $${price}`}
+          {isFree
+            ? "Đăng ký miễn phí"
+            : `Đăng ký - ${new Intl.NumberFormat("vi-VN", {
+                style: "currency",
+                currency,
+                maximumFractionDigits: 0,
+              }).format(displayPrice)}`}
         </>
       )}
     </Button>
   );
 }
-

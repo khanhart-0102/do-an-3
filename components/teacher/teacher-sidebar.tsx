@@ -15,7 +15,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  CreditCard
+  CreditCard,
+  FileUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +60,11 @@ const menuItems = [
     title: "Admission Tests",
     href: "/teacher/tests",
     icon: FileCheck,
+  },
+  {
+    title: "Bài tập PDF",
+    href: "/teacher/pdf-assignments",
+    icon: FileUp,
   },
   {
     title: "Flashcards",
@@ -148,4 +154,3 @@ export function TeacherSidebar() {
     </aside>
   );
 }
-

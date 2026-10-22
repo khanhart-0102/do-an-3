@@ -8,23 +8,27 @@ import db from "@/db/drizzle";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getClerkUserById } from "@/lib/services/clerk.service";
+import type { User } from "@clerk/nextjs/server";
+import { getPlatformRole } from "@/lib/platform-admin";
 
 /**
  * Track user login
  * Upserts user data to users table
  */
-export const trackUserLogin = async (userId: string, clerkUser: any) => {
+export const trackUserLogin = async (userId: string, clerkUser: User) => {
     if (!userId || !clerkUser) {
         throw new Error("User ID and Clerk user data are required");
     }
 
-    const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+    const email =
+        clerkUser.emailAddresses?.find(
+            (address: { id: string }) =>
+                address.id === clerkUser.primaryEmailAddressId
+        )?.emailAddress || clerkUser.primaryEmailAddress?.emailAddress;
     const userName = clerkUser.username || email?.split('@')[0] || 'user';
     const firstName = clerkUser.firstName;
     const lastName = clerkUser.lastName;
     const imageUrl = clerkUser.imageUrl;
-    const role = clerkUser.publicMetadata?.role || 'STUDENT';
-
     // Check if user exists
     const existingUsers = await db.select()
         .from(users)
@@ -32,6 +36,9 @@ export const trackUserLogin = async (userId: string, clerkUser: any) => {
         .limit(1);
 
     const existingUser = existingUsers[0];
+    const role = existingUser?.role === "ADMIN"
+        ? "ADMIN"
+        : getPlatformRole(email, clerkUser.publicMetadata?.role);
 
     if (existingUser) {
         // Update existing user
@@ -42,7 +49,7 @@ export const trackUserLogin = async (userId: string, clerkUser: any) => {
                 firstName: firstName || existingUser.firstName,
                 lastName: lastName || existingUser.lastName,
                 userImageSrc: imageUrl || existingUser.userImageSrc,
-                role: role as any,
+                role,
                 lastLoginAt: new Date(),
             })
             .where(eq(users.userId, userId))
@@ -59,7 +66,7 @@ export const trackUserLogin = async (userId: string, clerkUser: any) => {
             lastName: lastName || null,
             userImageSrc: imageUrl || '/mascot.svg',
             status: 'active',
-            role: role as any,
+            role,
             language: 'en',
             createdAt: new Date(),
             lastLoginAt: new Date(),
@@ -104,4 +111,3 @@ export const getUserInfo = async (userId: string) => {
         database: dbUser,
     };
 };
-

@@ -148,6 +148,21 @@ export interface MultipleChoiceMetadata {
   maxSelections?: number;
 }
 
+export interface ImageAnswerBox {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  correctAnswer?: string;
+  acceptableAnswers?: string[];
+}
+
+export interface ImageAnswerMetadata extends TextInputMetadata {
+  imageAnswerMode: boolean;
+  imageAnswerBoxes: ImageAnswerBox[];
+}
+
 /**
  * Union type for all metadata types
  */
@@ -156,6 +171,7 @@ export type QuestionMetadata =
   | LabelingMetadata
   | OrderingMetadata
   | TextInputMetadata
+  | ImageAnswerMetadata
   | MultipleChoiceMetadata
   | null;
 
@@ -245,4 +261,3 @@ export function isLabelingAnswer(answer: any): answer is LabelingAnswer {
 export function isOrderingAnswer(answer: any): answer is OrderingAnswer {
   return answer && Array.isArray(answer.order);
 }
-

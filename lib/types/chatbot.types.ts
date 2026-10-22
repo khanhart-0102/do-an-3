@@ -81,11 +81,19 @@ export interface ErrorAnalysisRequest {
   language: 'en' | 'vi';
 }
 
+export interface PersonalizedRequest {
+  mode: 'personalized';
+  userInput: string;
+  userLevel?: 'beginner' | 'intermediate' | 'advanced';
+  language?: 'en' | 'vi';
+}
+
 export type ChatbotRequest = 
   | MultipleChoiceRequest 
   | VocabularyRequest 
   | GrammarRequest 
-  | ErrorAnalysisRequest;
+  | ErrorAnalysisRequest
+  | PersonalizedRequest;
 
 // ============================================================================
 // 3. OUTPUT VALIDATION

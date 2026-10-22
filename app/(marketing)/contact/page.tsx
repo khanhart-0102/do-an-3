@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { ArrowRight, Mail, Sparkles } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -20,18 +21,19 @@ export default function ContactPage() {
     subject: "",
     message: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    toast.success("Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.");
-    setFormData({ name: "", email: "", subject: "", message: "" });
-    setIsSubmitting(false);
+    const subject = `[Lingo] ${formData.subject.trim()}`;
+    const body = [
+      `Họ và tên: ${formData.name.trim()}`,
+      `Email: ${formData.email.trim()}`,
+      "",
+      formData.message.trim(),
+    ].join("\n");
+    const mailto = `mailto:support@lingo.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+    toast.info("Hãy gửi email trong ứng dụng thư vừa được mở để hoàn tất liên hệ.");
   };
 
   const handleChange = (
@@ -44,19 +46,42 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
-      <div className="max-w-7xl mx-auto px-4 py-16">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Liên hệ với chúng tôi
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Có câu hỏi? Chúng tôi luôn sẵn sàng hỗ trợ bạn
-          </p>
+    <div className="min-h-screen bg-white">
+      <section className="overflow-hidden bg-[#f2f7f3]">
+        <div className="mx-auto grid max-w-7xl items-center gap-8 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-[1fr_0.85fr] lg:py-20">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-semibold text-emerald-800">
+              <Sparkles className="h-4 w-4" />
+              Chúng tôi luôn sẵn sàng lắng nghe
+            </span>
+            <h1 className="mt-5 text-4xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
+              Kết nối với <span className="text-emerald-700">Lingo.</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">
+              Bạn cần hỗ trợ hoặc muốn chia sẻ góp ý? Hãy gửi lời nhắn cho chúng
+              tôi, đội ngũ Lingo luôn sẵn lòng hỗ trợ.
+            </p>
+            <a
+              href="#contact-form"
+              className="mt-7 inline-flex h-12 items-center gap-2 rounded-xl bg-emerald-700 px-6 font-semibold text-white shadow-lg shadow-emerald-900/15 transition-colors hover:bg-emerald-800"
+            >
+              Gửi lời nhắn <ArrowRight className="h-4 w-4" />
+            </a>
+          </div>
+          <div className="mx-auto w-full max-w-[500px]">
+            <Image
+              src="/illustrations/learning-hero.svg"
+              alt="Minh họa trao đổi và hỗ trợ học viên"
+              width={640}
+              height={480}
+              className="block h-auto w-full"
+            />
+          </div>
         </div>
+      </section>
 
-        <div className="grid md:grid-cols-3 gap-8">
+      <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:py-16">
+        <div className="grid gap-8 md:grid-cols-[0.8fr_1.2fr]">
           {/* Contact Info */}
           <div className="space-y-6">
             <Card>
@@ -82,45 +107,24 @@ export default function ContactPage() {
             <Card>
               <CardHeader>
                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
-                  <Phone className="w-6 h-6 text-blue-600" />
+                  <Mail className="w-6 h-6 text-blue-600" />
                 </div>
-                <CardTitle>Điện thoại</CardTitle>
+                <CardTitle>Gửi lời nhắn</CardTitle>
                 <CardDescription>
-                  Liên hệ qua điện thoại trong giờ làm việc
+                  Điền biểu mẫu, sau đó gửi email bằng ứng dụng thư của bạn
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <a
-                  href="tel:+84123456789"
-                  className="text-blue-600 hover:underline"
-                >
-                  +84 123 456 789
-                </a>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-2">
-                  <MapPin className="w-6 h-6 text-purple-600" />
-                </div>
-                <CardTitle>Địa chỉ</CardTitle>
-                <CardDescription>
-                  Ghé thăm văn phòng của chúng tôi
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700">
-                  123 Đường ABC, Quận 1<br />
-                  TP. Hồ Chí Minh, Việt Nam
+                <p className="text-sm leading-6 text-slate-600">
+                  Nội dung chỉ được gửi sau khi bạn xác nhận gửi thư.
                 </p>
               </CardContent>
             </Card>
           </div>
 
           {/* Contact Form */}
-          <div className="md:col-span-2">
-            <Card>
+          <div id="contact-form" className="scroll-mt-24 md:col-span-2">
+            <Card className="border-slate-200 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-2xl">Gửi tin nhắn</CardTitle>
                 <CardDescription>
@@ -184,10 +188,13 @@ export default function ContactPage() {
                     type="submit"
                     size="lg"
                     className="w-full"
-                    disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Đang gửi..." : "Gửi tin nhắn"}
+                    Mở email để gửi
                   </Button>
+                  <p className="text-center text-xs leading-5 text-slate-500">
+                    Biểu mẫu sẽ mở ứng dụng email của bạn; tin nhắn chỉ được gửi
+                    sau khi bạn xác nhận gửi thư.
+                  </p>
                 </form>
               </CardContent>
             </Card>
@@ -197,4 +204,3 @@ export default function ContactPage() {
     </div>
   );
 }
-

@@ -9,15 +9,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { AudioPlayer } from "@/components/ui/audio-player";
 import { AudioRecorder } from "@/components/ui/audio-recorder";
 import { QuestionRenderer } from "./question-inputs/question-renderer";
+import { ImageAnswerInput } from "./question-inputs/image-answer-input";
 import type { QuestionType } from "@/lib/utils/question-type-mapper";
-import type { QuestionAnswer } from "@/shared/types/questionMetadata";
+import type {
+  QuestionAnswer,
+  QuestionMetadata,
+} from "@/shared/types/questionMetadata";
+import { isImageAnswerMetadata } from "@/lib/utils/image-answer";
 
 interface Question {
   id: number;
   sectionId: number;
   questionText: string;
   questionType?: QuestionType | null; // ✅ NEW: Question input type
-  metadata?: any; // ✅ NEW: Metadata for complex question types
+  metadata?: QuestionMetadata | null;
   imageSrc?: string | null;
   audioSrc?: string | null;
   order: number;
@@ -88,7 +93,7 @@ export function TestQuestionDisplay({
     onAnswerChange(question.id, undefined, text);
   };
 
-  const handleRecordingComplete = (blob: Blob, _duration: number) => {
+  const handleRecordingComplete = (blob: Blob) => {
     // For speaking, we'll store the audio URL in textAnswer temporarily
     // In a real implementation, you'd upload the blob and get a URL
     const url = URL.createObjectURL(blob);
@@ -103,22 +108,26 @@ export function TestQuestionDisplay({
 
   const isSpeaking = section.skillType === "SPEAKING";
   const isWriting = section.skillType === "WRITING";
+  const usesImageAnswerBoxes =
+    !isSpeaking &&
+    !isWriting &&
+    !!question.imageSrc &&
+    isImageAnswerMetadata(question.metadata);
 
   // ✅ NEW: Convert answer to QuestionAnswer format
-  const currentAnswer: QuestionAnswer | undefined = answer ? {
-    selectedOptionId: answer.selectedOptionId || undefined,
-    text: answer.textAnswer || undefined,
-  } as any : undefined;
+  const currentAnswer: QuestionAnswer | undefined =
+    answer?.selectedOptionId != null
+      ? { selectedOptionId: answer.selectedOptionId }
+      : answer?.textAnswer != null
+        ? { text: answer.textAnswer }
+        : undefined;
 
   // ✅ NEW: Handle answer change from QuestionRenderer
   const handleAnswerChange = (newAnswer: QuestionAnswer) => {
-    const singleChoice = newAnswer as any;
-    const textInput = newAnswer as any;
-
-    if (singleChoice.selectedOptionId !== undefined) {
-      onAnswerChange(question.id, singleChoice.selectedOptionId);
-    } else if (textInput.text !== undefined) {
-      onAnswerChange(question.id, undefined, textInput.text);
+    if ("selectedOptionId" in newAnswer) {
+      onAnswerChange(question.id, newAnswer.selectedOptionId);
+    } else if ("text" in newAnswer) {
+      onAnswerChange(question.id, undefined, newAnswer.text);
     }
   };
 
@@ -174,7 +183,7 @@ export function TestQuestionDisplay({
             </Badge>
             <div className="flex-1">
               <div dangerouslySetInnerHTML={{ __html: question.questionText }} />
-              {question.imageSrc && (
+              {question.imageSrc && !usesImageAnswerBoxes && (
                 <img
                   src={question.imageSrc}
                   alt="Question"
@@ -194,7 +203,16 @@ export function TestQuestionDisplay({
         </CardHeader>
         <CardContent className="space-y-3">
           {/* ✅ NEW: Use QuestionRenderer for all question types */}
-          {!isSpeaking && !isWriting && (
+          {usesImageAnswerBoxes && question.imageSrc && (
+            <ImageAnswerInput
+              imageSrc={question.imageSrc}
+              metadata={question.metadata}
+              value={textAnswer}
+              onAnswerChange={handleTextChange}
+            />
+          )}
+
+          {!isSpeaking && !isWriting && !usesImageAnswerBoxes && (
             <QuestionRenderer
               questionType={questionType}
               options={question.options}
@@ -247,4 +265,3 @@ export function TestQuestionDisplay({
     </div>
   );
 }
-

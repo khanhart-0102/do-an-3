@@ -8,6 +8,10 @@ import db from "@/db/drizzle";
 import { tests } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { transformMetadata } from "@/lib/utils/metadata-transformer";
+import {
+  isImageAnswerMetadata,
+  stripImageAnswerKeys,
+} from "@/lib/utils/image-answer";
 
 /**
  * GET /api/admission-tests/[testId]
@@ -69,6 +73,12 @@ export async function GET(
             test.id
           );
         }
+
+        const usesImageAnswerBoxes = isImageAnswerMetadata(question.metadata);
+        question.metadata = stripImageAnswerKeys(question.metadata) as typeof question.metadata;
+        if (usesImageAnswerBoxes) {
+          question.correctAnswer = null;
+        }
       }
     }
 
@@ -81,4 +91,3 @@ export async function GET(
     );
   }
 }
-

@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import db from '@/db/drizzle';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { getPlatformRole } from '@/lib/platform-admin';
 
 export async function POST(req: Request) {
     // Get the headers
@@ -50,9 +51,11 @@ export async function POST(req: Request) {
     if (eventType === 'user.created') {
         const { id, email_addresses, username, first_name, last_name, image_url, public_metadata } = evt.data;
 
-        const email = email_addresses[0]?.email_address || '';
+        const email =
+            email_addresses.find((address) => address.id === evt.data.primary_email_address_id)
+                ?.email_address || email_addresses[0]?.email_address || '';
         const userName = username || email.split('@')[0];
-        const role = (public_metadata?.role as string) || 'STUDENT';
+        const role = getPlatformRole(email, public_metadata?.role);
 
         console.log(`👤 Creating user: ${userName} (${email})`);
 
@@ -65,7 +68,7 @@ export async function POST(req: Request) {
                 lastName: last_name || null,
                 userImageSrc: image_url || '/mascot.svg',
                 status: 'active',
-                role: role as any,
+                role,
                 language: 'en',
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -80,9 +83,11 @@ export async function POST(req: Request) {
     if (eventType === 'user.updated') {
         const { id, email_addresses, username, first_name, last_name, image_url, public_metadata } = evt.data;
 
-        const email = email_addresses[0]?.email_address || '';
+        const email =
+            email_addresses.find((address) => address.id === evt.data.primary_email_address_id)
+                ?.email_address || email_addresses[0]?.email_address || '';
         const userName = username || email.split('@')[0];
-        const role = (public_metadata?.role as string) || 'STUDENT';
+        const role = getPlatformRole(email, public_metadata?.role);
 
         console.log(`🔄 Updating user: ${userName} (${email})`);
 
@@ -94,7 +99,7 @@ export async function POST(req: Request) {
                     firstName: first_name || null,
                     lastName: last_name || null,
                     userImageSrc: image_url || '/mascot.svg',
-                    role: role as any,
+                    role,
                     updatedAt: new Date(),
                 })
                 .where(eq(users.userId, id));
@@ -124,4 +129,3 @@ export async function POST(req: Request) {
 
     return new NextResponse('Webhook processed successfully', { status: 200 });
 }
-
